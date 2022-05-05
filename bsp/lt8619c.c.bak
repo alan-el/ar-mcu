@@ -1,0 +1,444 @@
+#include "nrf_drv_twi.h"
+#include "nrf_error.h"
+#include "nrf_delay.h"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
+
+#include "lt8619c.h"
+
+/* TWI instance ID */
+#define TWI_INSTANCE_ID     0
+
+/* TWI instance. */
+static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
+
+uint8_t rx_data[64] = {0};
+
+uint8_t refer_resistance;
+
+/* LT8619C setting */
+bool load_hdcp_key_en;
+bool clk_ddr_mode_en;
+
+uint8_t cp_convert_mode;
+uint8_t yuv_output_mode;
+uint8_t yc_swap;
+uint8_t yuv_color_depth;
+
+bool bt656_double_clk_en;
+
+void lt8619c_write(const uint8_t reg_addr, uint8_t *p_data, uint8_t length);
+void lt8619c_read(const uint8_t reg_addr, uint8_t *p_data, uint8_t length);
+
+
+void lt8619c_setting(void)
+{
+    refer_resistance = EXTERNAL_RES;
+
+    load_hdcp_key_en = 1;
+
+    clk_ddr_mode_en = 0;
+
+    cp_convert_mode = HDTV;
+
+    yuv_output_mode = BT1120_OUTPUT;
+
+    yc_swap = YC_SWAP_DIS;
+
+    yuv_color_depth = OUTPUT_16BIT_LOW;
+
+    if(yuv_output_mode == BT656_OUTPUT)
+    {
+        bt656_double_clk_en = 1;
+    }
+    else
+    {
+        bt656_double_clk_en = 0;
+    }
+}
+
+void lt8619c_set_hpd(bool level)
+{
+    uint8_t reg_bank = 0x80;
+    uint8_t reg_val;
+    
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    lt8619c_read(0x06, &reg_val, 1);
+
+    if(level)
+    {
+        reg_val |= 0x08;
+    }
+    else
+    {
+        reg_val &= 0xF7;
+    }
+
+    lt8619c_write(0x06, &reg_val, 1);
+}
+
+void timing_config(void)
+{
+    uint16_t h_back_p = 0x0000;
+    uint16_t h_sync_w_id = 0x0000;
+    uint16_t val6060;
+    uint16_t h_sync_pol = 0;
+    uint16_t v_sync_pol = 0;
+    uint16_t tmp_read = 0;
+    
+    uint8_t reg_bank, reg_value, reg_value_ext;
+
+    reg_bank = 0x60;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    /* timing related start */
+    lt8619c_read(0x14, &reg_value, 1);
+    lt8619c_read(0x15, &reg_value_ext, 1);
+    h_sync_w_id = reg_value * 0x0100 + reg_value_ext;
+
+    lt8619c_read(0x18, &reg_value, 1);
+    lt8619c_read(0x19, &reg_value_ext, 1);
+    h_back_p = reg_value * 0x0100 + reg_value_ext;
+
+    lt8619c_read(0x24, &reg_value, 1);
+    tmp_read = reg_value;
+
+    h_sync_pol = tmp_read & 0x01;
+    v_sync_pol = (tmp_read & 0x02 >> 1);
+
+    lt8619c_read(0x60, &reg_value, 1);
+    val6060 = reg_value & 0xC7;
+    NRF_LOG_INFO("val6060 = 0x%02x\n", val6060);
+
+    if(h_sync_pol)
+    {
+        val6060 |= 0x20;
+        NRF_LOG_INFO("h_syncpol positive\n");
+    }
+
+    if(v_sync_pol)
+    {
+        val6060 |= 0x10;
+        NRF_LOG_INFO("v_syncpol positive\n");
+    }
+
+    NRF_LOG_INFO("val6060 = 0x%02x\n", val6060);
+
+    reg_value = (uint8_t)val6060;
+    lt8619c_write(0x60, &reg_value, 1);
+
+    reg_value = (uint8_t)((h_sync_w_id + h_back_p) / 256);
+    lt8619c_write(0x61, &reg_value, 1);
+
+    reg_value = (uint8_t)((h_sync_w_id + h_back_p) % 256);
+    lt8619c_write(0x62, &reg_value, 1);
+
+    lt8619c_read(0x22, &reg_value, 1);
+    lt8619c_write(0x63, &reg_value, 1);
+
+    lt8619c_read(0x23, &reg_value, 1);
+    lt8619c_write(0x64, &reg_value, 1);
+
+    lt8619c_read(0x1E, &reg_value, 1);
+    lt8619c_write(0x65, &reg_value, 1);
+
+    lt8619c_read(0x1F, &reg_value, 1);
+    lt8619c_write(0x66, &reg_value, 1);
+
+    lt8619c_read(0x16, &reg_value, 1);
+    lt8619c_read(0x13, &reg_value_ext, 1);
+    reg_value = (reg_value + reg_value_ext) % 256;
+    lt8619c_write(0x67, &reg_value, 1);
+
+    lt8619c_read(0x20, &reg_value, 1);
+    reg_value &= 0x0F;
+    lt8619c_write(0x69, &reg_value, 1);
+
+    lt8619c_read(0x21, &reg_value, 1);
+    lt8619c_write(0x6A, &reg_value, 1);
+
+    lt8619c_read(0x1C, &reg_value, 1);
+    reg_value &= 0x0F;
+    lt8619c_write(0x6B, &reg_value, 1);
+
+    lt8619c_read(0x1D, &reg_value, 1);
+    lt8619c_write(0x6C, &reg_value, 1);
+}
+
+void timing_read(void)
+{
+    
+}
+
+int lt8619c_yuv_config(void)
+{
+    int ret = 1;
+    int check_hdmi_in_data_cnt = 0;
+
+    uint8_t reg_bank, reg_val;
+
+    reg_bank = 0x80;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    lt8619c_read(0x2C, &reg_val, 1);
+    reg_val |= 0x30;
+    lt8619c_write(0x2C, &reg_val, 1);  // RGD_CLK_STABLE_OPT[1:0]
+
+    reg_bank = 0x60;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    reg_val = 0x08;
+    lt8619c_write(0x80, &reg_val, 1);  // 0x08:Use xtal clk ; 0x18 : Use internal clk
+
+    reg_val = refer_resistance;
+    lt8619c_write(0x89, &reg_val, 1);  
+
+    reg_bank = 0x60;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    reg_val = 0x0F;
+    lt8619c_write(0xA8, &reg_val, 1);
+
+    if(bt656_double_clk_en)
+    {
+        reg_val = 0x71;
+        lt8619c_write(0x96, &reg_val, 1);
+        
+        reg_val = 0x51;
+        lt8619c_write(0xA0, &reg_val, 1);
+        
+        reg_val = 0x44;
+        lt8619c_write(0xA3, &reg_val, 1);
+        
+        reg_val = 0x22;
+        lt8619c_write(0xA2, &reg_val, 1);
+    }
+    
+    reg_val = yuv_output_mode;
+    lt8619c_write(0x60, &reg_val, 1);
+
+    if(clk_ddr_mode_en)
+    {
+        reg_val = 0x14;
+        lt8619c_write(0xA4, &reg_val, 1);
+    }
+    else
+    {
+        reg_val = 0x10;
+        lt8619c_write(0xA4, &reg_val, 1);
+    }
+
+    reg_bank = 0x80;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    
+    while(1)
+    {
+        lt8619c_read(0x43, &reg_val, 1);
+        if((reg_val & 0x80) != 0x00)
+        {
+            check_hdmi_in_data_cnt++;
+            break;
+        }
+
+        check_hdmi_in_data_cnt++;
+        nrf_delay_ms(100);
+
+        if(check_hdmi_in_data_cnt > 30)
+            return -1;
+    }
+
+    nrf_delay_ms(600);
+
+    check_hdmi_in_data_cnt = 0;
+
+    while(1)
+    {
+        lt8619c_read(0x43, &reg_val, 1);
+        if((reg_val & 0x80) != 0x00)
+        {
+            check_hdmi_in_data_cnt++;
+            break;
+        }
+
+        check_hdmi_in_data_cnt++;
+        nrf_delay_ms(100);
+
+        if(check_hdmi_in_data_cnt > 30)
+            return -1;
+    }
+
+    nrf_delay_ms(400);
+
+    reg_bank = 0x60;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    lt8619c_read(0x0D, &reg_val, 1);
+    reg_val &= 0xFC;
+    lt8619c_write(0x0D, &reg_val, 1);
+
+    nrf_delay_ms(50);
+
+    lt8619c_read(0x0D, &reg_val, 1);
+    reg_val |= 0x03;
+    lt8619c_write(0x0D, &reg_val, 1);
+
+    reg_bank = 0x80;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    lt8619c_read(0x71, &reg_val, 1);
+    reg_val &= 0x60;
+    NRF_LOG_INFO("color space = 0x%02x\n", reg_val);
+
+    lt8619c_read(0x71, &reg_val, 1);
+    reg_val &= 0x60;
+     
+    if(reg_val != 0x20)
+    {
+        NRF_LOG_INFO("is not YCbCr\n");
+        reg_bank = 0x60;
+        lt8619c_write(0xFF, &reg_bank, 1);
+
+        reg_val = 0xF0;
+        lt8619c_write(0x07, &reg_val, 1);
+
+        reg_bank = 0x80;
+        lt8619c_write(0xFF, &reg_bank, 1);
+
+        lt8619c_read(0x71, &reg_val, 1);
+        reg_val &= 0x60;
+
+        reg_bank = 0x60;
+        lt8619c_write(0xFF, &reg_bank, 1);
+        
+        if(reg_val == 0x00)
+        {
+            NRF_LOG_INFO("is RGB\n");
+            
+            reg_val = 0x0A + cp_convert_mode;
+            lt8619c_write(0x52, &reg_val, 1);
+        }
+        else
+        {
+            NRF_LOG_INFO("is 444\n");
+
+            reg_val = 0x02 + cp_convert_mode;
+            lt8619c_write(0x52, &reg_val, 1);
+        }
+        
+    }
+
+    timing_config();
+
+    reg_val = yc_swap;
+    lt8619c_write(0x6D, &reg_val, 1);
+
+    reg_val = yuv_color_depth;
+    lt8619c_write(0x6E, &reg_val, 1);
+
+    lt8619c_read(0x0D, &reg_val, 1);
+    reg_val &= 0xFC;
+    lt8619c_write(0x0D, &reg_val, 1);
+
+    nrf_delay_ms(50);
+
+    lt8619c_read(0x0D, &reg_val, 1);
+    reg_val |= 0x03;
+    lt8619c_write(0x0D, &reg_val, 1);
+
+    reg_val = 0xFD;
+    lt8619c_write(0x0E, &reg_val, 1);
+
+    nrf_delay_ms(50);
+
+    reg_val = 0xFF;
+    lt8619c_write(0x0E, &reg_val, 1);
+
+    return ret;
+}
+
+void lt8619c_i2c_init(void)
+{
+    ret_code_t err_code;
+    const nrf_drv_twi_config_t config = 
+    {
+        .scl                = LT8619C_I2C_SCL_PIN_NUM,
+        .sda                = LT8619C_I2C_SDA_PIN_NUM,
+        .frequency          = NRF_DRV_TWI_FREQ_100K,
+        .interrupt_priority = APP_IRQ_PRIORITY_HIGH,
+        .clear_bus_init     = false
+    };
+    
+    err_code = nrf_drv_twi_init(&m_twi, &config, NULL, NULL);
+    APP_ERROR_CHECK(err_code);
+    
+    nrf_drv_twi_enable(&m_twi);
+}
+
+void lt8619c_write(const uint8_t reg_addr, uint8_t *p_data, uint8_t length)
+{
+    ret_code_t err_code;
+
+    err_code = nrf_drv_twi_tx(&m_twi, LT8619C_I2C_ADDR, &reg_addr, 1, false);
+    APP_ERROR_CHECK(err_code);
+    
+    err_code = nrf_drv_twi_tx(&m_twi, LT8619C_I2C_ADDR, p_data, length, false);
+    APP_ERROR_CHECK(err_code);
+}
+
+void lt8619c_read(const uint8_t reg_addr, uint8_t *p_data, uint8_t length)
+{
+    ret_code_t err_code;
+
+    err_code = nrf_drv_twi_tx(&m_twi, LT8619C_I2C_ADDR, &reg_addr, 1, false);
+    APP_ERROR_CHECK(err_code);
+    
+    err_code = nrf_drv_twi_rx(&m_twi, LT8619C_I2C_ADDR, p_data, length);
+    APP_ERROR_CHECK(err_code);
+}
+
+void lt8619c_init(void)
+{
+    int ret = 0xFF;
+    uint8_t reg_bank, reg_val;
+    
+    lt8619c_i2c_init();
+
+    lt8619c_read(0x00, &reg_val, 1);
+    NRF_LOG_INFO("read register [0x00]: 0x%02x", reg_val);
+
+    /* TODO lt8619c reset */
+
+    lt8619c_setting();
+
+    lt8619c_set_hpd(LOW);
+
+    lt8619c_set_hpd(HIGH);
+
+    NRF_LOG_INFO("LT8619C_YUV_Config\n");
+
+    ret = lt8619c_yuv_config();
+    if(ret < 0)
+    {
+        NRF_LOG_INFO("LT8619C_PowOff with No HDMIIN Data\n");
+        return ;
+    }
+
+    NRF_LOG_INFO("LT8619C_YUV_Config\n");
+
+    reg_bank = 0x60;
+    lt8619c_write(0xFF, &reg_bank, 1);
+
+    reg_val = 0x0F;
+    lt8619c_write(0xA8, &reg_val, 1);
+
+    timing_read();
+    
+    NRF_LOG_INFO("load lt8619c finished\n");
+}
+
+
+
+
