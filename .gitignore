@@ -25,6 +25,7 @@
 *.a
 *.la
 *.lo
+*zip
 
 # Shared objects (inc. Windows DLLs)
 *.dll

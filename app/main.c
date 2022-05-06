@@ -74,6 +74,8 @@
 
 #include "main.h"
 #include "lt8619c.h"
+#include "ecx335sn.h"
+#include "button.h"
 
 #define APP_BLE_CONN_CFG_TAG        1                                   /**< A tag identifying the SoftDevice BLE configuration. */
 
@@ -409,14 +411,16 @@ int main(void)
     // Initialize.
     log_init();
     timer_init();
+    buttons_init();
     power_management_init();
-//    ble_stack_init();
-//    gatt_init();
+    ble_stack_init();
+    gatt_init();
 //    
     sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     
     lt8619c_init();
-
+    ecx335sn_init();
+    
     // Start execution.
     NRF_LOG_INFO("AR application started.");
     //scan_start();
