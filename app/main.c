@@ -71,6 +71,7 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_ble_scan.h"
+#include "nrf_delay.h"
 
 #include "main.h"
 #include "lt8619c.h"
@@ -419,11 +420,20 @@ int main(void)
     sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     
     lt8619c_init();
+    nrf_delay_ms(2000);
     ecx335sn_init();
     
     // Start execution.
     NRF_LOG_INFO("AR application started.");
     //scan_start();
+
+    for(;;)
+    {
+        lt8619c_main_loop();
+        nrf_delay_ms(1000);
+        NRF_LOG_FLUSH();
+    }
+    
     // Enter main loop.
     for (;;)
     {

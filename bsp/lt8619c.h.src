@@ -1,0 +1,207 @@
+/******************************************************************************
+  * @project: LT8619C
+  * @file: lt8619.h
+  * @author: 
+  * @company: LONTIUM COPYRIGHT and CONFIDENTIAL
+  * @date: 2020.09.30
+******************************************************************************/
+
+#ifndef		_LT8619C_H
+#define		_LT8619C_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+#define LT8619C_I2C_SDA_PIN_NUM     (19)
+#define LT8619C_I2C_SCL_PIN_NUM     (20)
+
+/* LT8619C settings */
+
+#define LT8619C_I2C_ADDR            (0x64 >> 1)
+
+#define USE_EXTERNAL_HDCPKEY
+#define LT8619C_OUTPUTMODE  OUTPUT_LVDS_2_PORT
+#define AUDIO_INPUT_MODE    I2S_2CH
+#define LT8619C_OUTPUTCOLOR COLOR_RGB
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
+typedef  enum
+{
+	Low    = 0,
+	High   = !Low
+}
+Pin_Status;
+
+typedef enum {FALSE = 0, TRUE = !FALSE} PinStatus;
+typedef enum {RESET = 0, SET = !RESET} FlagStatus, ITStatus, BitStatus, BitAction;
+
+typedef struct {
+u32 pix_clk;
+u16 hfp;
+u16 hs;
+u16 hbp;
+u16 hact;
+u16 htotal;
+u16 vfp;
+u16 vs;
+u16 vbp;
+u16 vact;
+u16 vtotal;
+}video_timing;
+
+enum LT8619C_OUTPUTMODE_ENUM
+{
+    OUTPUT_RGB888=0,
+    OUTPUT_RGB666,
+    OUTPUT_RGB565,
+    OUTPUT_YCBCR444,
+    OUTPUT_YCBCR422_16BIT,
+    OUTPUT_YCBCR422_20BIT,
+    OUTPUT_YCBCR422_24BIT,
+    OUTPUT_BT656_8BIT,
+    OUTPUT_BT656_10BIT,
+    OUTPUT_BT656_12BIT,
+    OUTPUT_BT1120_16BIT,
+    OUTPUT_BT1120_20BIT,
+    OUTPUT_BT1120_24BIT,
+    OUTPUT_LVDS_2_PORT,
+		OUTPUT_LVDS_1_PORT
+};
+
+#define LT8619C_OUTPUTMODE  OUTPUT_LVDS_2_PORT
+
+enum LT8619C_AUDIOINPUT_MODE
+{
+    I2S_2CH=0,
+	SPDIF
+};
+#define Audio_Input_Mode I2S_2CH
+
+typedef enum
+{
+    COLOR_RGB = 0x00,
+    COLOR_YCBCR444 = 0x40,
+    COLOR_YCBCR422 = 0x20
+}
+_INPUT_COLORSPACE;
+
+#define LT8619C_OUTPUTCOLOR COLOR_RGB
+
+
+typedef enum
+{
+    NO_DATA = 0x00,
+    ITU_601 = 0x40,
+    ITU_709 = 0x80,
+    EXTENDED_COLORIETRY = 0xc0
+}
+_INPUT_COLORIETRY;
+
+typedef enum
+{
+    xvYCC601 = 0x00,
+    xvYCC709 = 0x10
+    //FUTURE_COLORIETRY
+}
+_INPUT_EX_COLORIETRY;
+
+typedef enum
+{
+    DEFAULT_RANGE = 0x00,
+    LIMIT_RANGE = 0x04,
+    FULL_RANGE  = 0x08,
+    RESERVED_VAL=0xc0
+}
+_INPUT_QUANTRANGE;
+
+
+
+typedef struct {
+    bool flag_RXClkStable;
+    bool flag_RXClkDetected;
+    bool flag_RXPLLLocked;
+    bool Flag_HsyncStable;
+    bool input_hdmimode;
+    u8   input_vic;
+    u8   input_colorspace;
+    u8   input_colordepth;
+    u8   input_colorimetry;
+    u8   input_ex_colorimetry;
+    u8   input_QuantRange;
+    u8   input_PRfactor;
+    u8   input_videoindex;
+    u32  ClkFreqValCurrent;
+    u32  ClkFreqValPrevious;
+
+    
+}_LT8619C_RXStatus;
+
+
+
+
+
+#if 0 
+typedef enum
+{
+/*-----------------------------------------------------------------------------------------------------------
+If add other video resolution, please modify array Input_Resolution_Parameter[] in file panel.c accordingly.
+------------------------------------------------------------------------------------------------------------*/
+    INDEX_640x480_60P = 0,
+    INDEX_656x496_60P,
+    INDEX_720x480_60P,
+    INDEX_720x576_50P,
+    INDEX_1280x720_60P,
+    INDEX_1280x720_50P,
+    INDEX_1920x1080_60P,
+    INDEX_1920x1080_50P,
+    INDEX_800x600_60P,
+    INDEX_848x480_60P,
+    INDEX_1024x768_60P,
+    INDEX_1280x768_RB_60P,
+    INDEX_1280x768_60P,
+    INDEX_1280x800_RB_60P,
+    INDEX_1280x800_60P,
+    INDEX_1280x960_60P,
+    INDEX_1280x1024_60P,
+    INDEX_1360x768_60P,
+    INDEX_1366x768_RB_60P,
+    INDEX_1366x768_60P,
+    INDEX_1440x900_RB_60P,
+    INDEX_1440x900_60P,
+    INDEX_1600x900_RB_60P,
+    INDEX_1600x1200_60P,
+    INDEX_1920x1200_RB_60P,
+    INDEX_1920x1200_60P,
+    INDEX_3840x2160_24P,
+    INDEX_3840x2160_25P,
+    INDEX_3840x2160_30P,
+    INDEX_4096x2160_24P,
+
+    INDEX_NO_SIGNAL,
+    INDEX_UNSUPPORTED_FORMAT
+
+}Video_FormatIndex;
+
+#endif
+
+
+
+
+ void LT8619C_Init(void);
+ void LT8619C_MainLoop(void);
+ void LT8619C_SetHPD(Pin_Status level);
+ void LT8619C_EDIDSet(const u8 * EDID_Buffer);
+ void LT8619C_Reset(void);
+ void LT8619C_LvdspllLock_Det(void);
+ void LT8619C_RX_Reset(void);
+ void LT8619C_LVDSData_Det(void);
+
+ bool LT8619C_VideoChange(void);
+
+u8 LT8619C_EDID_Check_Sum(u8 block,u8 *buf);
+void LT8619C_EDID_Dtb_Block_Calc(u8 * Pbuf,const video_timing *Timing);
+#endif
+

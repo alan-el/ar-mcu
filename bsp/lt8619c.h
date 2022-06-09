@@ -13,6 +13,7 @@
 #define USE_EXTERNAL_HDCPKEY
 #define LT8619C_OUTPUTMODE  OUTPUT_LVDS_2_PORT
 #define AUDIO_INPUT_MODE    I2S_2CH
+#define LT8619C_OUTPUTCOLOR COLOR_RGB
 
 typedef struct
 {
@@ -29,6 +30,55 @@ typedef struct
     uint16_t vtotal;
     
 }video_timing_t;
+
+typedef struct
+{
+    bool flag_rx_clk_stable;
+    bool flag_rx_clk_detected;
+    bool flag_rx_pll_locked;
+    bool flag_hsync_stable;
+    bool input_hdmi_mode;
+    uint8_t input_vic;
+    uint8_t input_color_space;
+    uint8_t input_color_depth;
+    uint8_t input_color_imetry;
+    uint8_t input_ex_color_imetry;
+    uint8_t input_quant_range;
+    uint8_t input_pr_factor;
+    uint8_t input_videoindex;
+    uint32_t clk_freq_val_current;
+    uint32_t clk_freq_val_previous;
+}lt8619c_rx_status_t;
+
+typedef enum
+{
+    COLOR_RGB = 0x00,
+    COLOR_YCBCR444 = 0x40,
+    COLOR_YCBCR422 = 0x20
+}input_color_space_t;
+
+typedef enum
+{
+    NO_DATA = 0x00,
+    ITU_601 = 0x40,
+    ITU_709 = 0x80,
+    EXTENDED_COLORIETRY = 0xc0
+}input_color_ietry_t;
+
+typedef enum
+{
+    DEFAULT_RANGE = 0x00,
+    LIMIT_RANGE = 0x04,
+    FULL_RANGE  = 0x08,
+    RESERVED_VAL=0xc0
+}input_quant_range_t;
+
+typedef enum
+{
+    xvYCC601 = 0x00,
+    xvYCC709 = 0x10
+    //FUTURE_COLORIETRY
+}input_ex_color_ietry_t;
 
 enum LT8619C_OUTPUTMODE_ENUM
 {
@@ -60,10 +110,10 @@ typedef  enum
 {
 	LOW = 0,
 	HIGH = !LOW
-}
-Pin_Status;
+}Pin_Status;
 
 void lt8619c_init(void);
+void lt8619c_main_loop(void);
 
 #endif
 
