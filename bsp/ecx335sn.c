@@ -37,8 +37,6 @@ void ecx335sn_power_on(void)
     {
         regs_val[i] = ecx335sn_read_reg(i);
     }*/
-    
-    ecx335sn_power_on_serial_setting();
 }
 
 /* TODO */
@@ -258,10 +256,14 @@ uint8_t ecx335sn_read_reg(uint8_t reg_addr)
 
 void ecx335sn_init(void)
 {
-    ecx335sn_spi_init(SPI_OLED_A_SS_PIN);
-
     ecx335sn_reset_io_init();
-
     ecx335sn_power_on();
+    
+    ecx335sn_spi_init(SPI_OLED_A_SS_PIN);
+    ecx335sn_power_on_serial_setting();
+    ecx335sn_spi_uninit();
+
+    ecx335sn_spi_init(SPI_OLED_B_SS_PIN);
+    ecx335sn_power_on_serial_setting();
 }
 

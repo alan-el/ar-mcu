@@ -229,7 +229,7 @@ void lt8619c_rx_init(void)
         lt8619c_write_reg(0xFF, 0x60);
         lt8619c_write_reg(0x06, 0xE7);
         /* VESA + DE 
-        lt8619c_write_reg(0x59, 0x40);*///bit7 for VESA/JEIDA mode; bit5 for DE/SYNC mode; bit4 for 6/8bit; bit1 for port swap
+        lt8619c_write_reg(0x59, 0x40);//bit7 for VESA/JEIDA mode; bit5 for DE/SYNC mode; bit4 for 6/8bit; bit1 for port swap*/
         /* VESA + SYNC 
         lt8619c_write_reg(0x59, 0x60);*/
         /* JEIDA + DE */
@@ -238,7 +238,7 @@ void lt8619c_rx_init(void)
         lt8619c_write_reg(0x59, 0xE0);*/
         lt8619c_write_reg(0xA0, 0x58);
         lt8619c_write_reg(0xA4, 0x01);
-        //lt8619c_write_reg(0xA8, 0x00);
+        lt8619c_write_reg(0xA8, 0x00);
         lt8619c_write_reg(0xBA, 0x18);
         lt8619c_write_reg(0xC0, 0x18);
         lt8619c_write_reg(0xB0, 0x66);
