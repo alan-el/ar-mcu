@@ -74,6 +74,7 @@
 #include "nrf_delay.h"
 
 #include "main.h"
+#include "i2c_comm_slave.h"
 #include "lt8619c.h"
 #include "ecx335sn.h"
 #include "button.h"
@@ -419,21 +420,24 @@ int main(void)
 //    
     sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     
-    lt8619c_init();
-    nrf_delay_ms(2000);
+    i2c_comm_slave_init();
+    /*lt8619c_init();
+    nrf_delay_ms(2000);*/
     ecx335sn_init();
     
     // Start execution.
     NRF_LOG_INFO("AR application started.");
     //scan_start();
 
+    /*
     for(;;)
     {
         lt8619c_main_loop();
         nrf_delay_ms(1000);
         NRF_LOG_FLUSH();
     }
-    
+    */
+
     // Enter main loop.
     for (;;)
     {

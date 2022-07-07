@@ -51,10 +51,20 @@ void ecx335sn_power_on_serial_setting(void)
     ecx335sn_write_reg(0x02, 0x40);
     ecx335sn_write_reg(0x03, 0xA0);
     ecx335sn_write_reg(0x04, 0x5F);
+    /* Luminance and white chromaticity preset mode selection = 0 */
     ecx335sn_write_reg(0x05, 0x80);
+    /* Luminance and white chromaticity preset mode selection = 3 
+    ecx335sn_write_reg(0x05, 0x83);*/
+    /* Luminance and white chromaticity preset mode selection = 4 
+    ecx335sn_write_reg(0x05, 0x84);*/
     ecx335sn_write_reg(0x07, 0x40);
+    /* OTPCALDAC_REGDIS = 1 
+    ecx335sn_write_reg(0x08, 0x04);*/
     ecx335sn_write_reg(0x1C, 0x0A);
+    /* Luminance adjustment = 93 */
     ecx335sn_write_reg(0x1D, 0x5D);
+    /* Luminance adjustment = 255 
+    ecx335sn_write_reg(0x1D, 0xFF);*/
     ecx335sn_write_reg(0x1E, 0x22);
     ecx335sn_write_reg(0x26, 0x00);
     ecx335sn_write_reg(0x27, 0x00);
