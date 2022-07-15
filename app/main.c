@@ -407,10 +407,19 @@ static void idle_state_handle(void)
     NRF_LOG_FLUSH();
     nrf_pwr_mgmt_run();
 }
-
+/*
+struct s
+{
+    char a;
+    char b;
+    char *c;
+    int d;
+};
+int z;*/
 int main(void)
 {
     // Initialize.
+    //z = (int)&(((struct s*)0)->c);
     log_init();
     timer_init();
     buttons_init();
