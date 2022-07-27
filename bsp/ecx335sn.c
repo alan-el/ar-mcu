@@ -21,28 +21,90 @@ uint8_t ecx335sn_read_reg(uint8_t reg_addr);
 
 void ecx335sn_reset_io_init(void)
 {
+#ifdef USE_SAME_RESET_PIN
     nrf_gpio_cfg_output(OLED_RESET_PIN);
+#else
+    nrf_gpio_cfg_output(OLEDA_RESET_PIN);
+    nrf_gpio_cfg_output(OLEDB_RESET_PIN);
+#endif    
 }
 
-void ecx335sn_power_on(void)
+void ecx335sn_power_on()
 {
+    
+#ifdef USE_SAME_RESET_PIN
     nrf_gpio_pin_write(OLED_RESET_PIN, 0);
     nrf_delay_ms(100);
     nrf_gpio_pin_write(OLED_RESET_PIN, 1);
     nrf_delay_ms(100);
+#else
+    nrf_gpio_pin_write(OLEDA_RESET_PIN, 0);
+    nrf_delay_ms(100);
+    nrf_gpio_pin_write(OLEDA_RESET_PIN, 1);
+    nrf_delay_ms(100);
 
-    /* DEBUG, registers value dump 
-    ecx335sn_enable_reg_read();
-    for(int i = 0; i < 0x81; i++)
-    {
-        regs_val[i] = ecx335sn_read_reg(i);
-    }*/
+    nrf_gpio_pin_write(OLEDB_RESET_PIN, 0);
+    nrf_delay_ms(100);
+    nrf_gpio_pin_write(OLEDB_RESET_PIN, 1);
+    nrf_delay_ms(100);
+#endif    
+    
 }
 
 /* TODO */
 void ecx335sn_power_off(void)
 {
     
+}
+
+void ecx335sn_power_save_on(void)
+{
+    /* serial setting 8: PS0 on */
+    ecx335sn_write_reg(0x00, 0x0E);
+
+    /** Datasheet said perform setting 3
+     *  at an interval of "> 200us" 
+     */
+    nrf_delay_us(250);
+    
+    /* serial setting 9: PS1 on */
+    ecx335sn_write_reg(0x01, 0x00);
+}
+
+/**
+ * Luminance and white chromaticity preset mode selection
+ * 1: 120cd/m2, (0.313,0.350)
+ * 2: 300cd/m2, (0.313,0.329)
+ * 0: 500cd/m2, (0.313,0.329)
+ * 3: 1500cd/m2, (0.310,0.310)
+ * 4: 3000cd/m2, (0.310,0.310)
+ */
+ 
+static int cur_lum_mode = 0;
+int get_next_lum_mode(int cur)
+{
+    int next = 0;
+    switch(cur)
+    {
+        case 0:
+            next = 3;
+            break;
+        case 1:
+            next = 2;
+            break;
+        case 2:
+            next = 0;
+            break;
+        case 3:
+            next = 4;
+            break;
+        case 4:
+            next = 1;
+            break;
+        default:
+            break;
+    }
+    return next;
 }
 
 void ecx335sn_power_on_serial_setting(void)
@@ -52,7 +114,7 @@ void ecx335sn_power_on_serial_setting(void)
     ecx335sn_write_reg(0x03, 0xA0);
     ecx335sn_write_reg(0x04, 0x5F);
     /* Luminance and white chromaticity preset mode selection = 0 */
-    ecx335sn_write_reg(0x05, 0x80);
+    ecx335sn_write_reg(0x05, 0x80 + cur_lum_mode);
     /* Luminance and white chromaticity preset mode selection = 3 
     ecx335sn_write_reg(0x05, 0x83);*/
     /* Luminance and white chromaticity preset mode selection = 4 
@@ -210,7 +272,7 @@ void ecx335sn_spi_init(uint8_t slave_cs_num)
     spi_config.mosi_pin = SPI_MOSI_PIN;
     spi_config.sck_pin  = SPI_SCK_PIN;
     
-    spi_config.frequency = NRF_DRV_SPI_FREQ_8M;
+    spi_config.frequency = NRF_DRV_SPI_FREQ_125K;
     spi_config.bit_order = ECX335SN_BIT_ORDER;
 
     NRF_LOG_INFO("SPI init.");
@@ -223,6 +285,30 @@ void ecx335sn_spi_uninit(void)
 {
     nrf_drv_spi_uninit(&m_spi);
 }
+
+
+void ecx335sn_change_luminance(void)
+{
+    cur_lum_mode = get_next_lum_mode(cur_lum_mode);
+
+    ecx335sn_spi_init(SPI_OLED_A_SS_PIN);
+    /*
+    ecx335sn_power_save_on();
+    nrf_delay_ms(5);
+    ecx335sn_power_on_serial_setting();*/
+    ecx335sn_write_reg(0x05, 0x80 + cur_lum_mode);
+    ecx335sn_spi_uninit();
+
+    ecx335sn_spi_init(SPI_OLED_B_SS_PIN);
+    /*
+    ecx335sn_power_save_on();
+    nrf_delay_ms(5);
+    ecx335sn_power_on_serial_setting();*/
+    ecx335sn_write_reg(0x05, 0x80 + cur_lum_mode);
+    ecx335sn_spi_uninit();
+    
+}
+
 
 void ecx335sn_write_reg(uint8_t reg_addr, uint8_t val)
 {
@@ -271,9 +357,20 @@ void ecx335sn_init(void)
     
     ecx335sn_spi_init(SPI_OLED_A_SS_PIN);
     ecx335sn_power_on_serial_setting();
+    
+    /* DEBUG, registers value dump 
+    ecx335sn_enable_reg_read();
+    regs_val[1] = ecx335sn_read_reg(1);
+    regs_val[5] = ecx335sn_read_reg(5);
+    regs_val[8] = ecx335sn_read_reg(8);
+    NRF_LOG_INFO("REG[0x05] = 0x%02x", regs_val[0x05]);
+    NRF_LOG_INFO("REG[0x08] = 0x%02x", regs_val[0x08]);
+    NRF_LOG_INFO("REG[0x01] = 0x%02x", regs_val[0x01]);*/
+    
     ecx335sn_spi_uninit();
 
     ecx335sn_spi_init(SPI_OLED_B_SS_PIN);
     ecx335sn_power_on_serial_setting();
+    ecx335sn_spi_uninit();
 }
 

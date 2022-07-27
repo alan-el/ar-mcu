@@ -28,6 +28,7 @@ typedef enum
 {
     BUTTON_EVENT_NOTHING = 0,
     BUTTON_EVENT_FOO,
+    BUTTON_EVENT_CHANGE_OLE_LUMINANCE,
     
 }button_event_t;
 

@@ -9,6 +9,7 @@
 #include "nrf_drv_gpiote.h"
 
 #include "button.h"
+#include "ecx335sn.h"
 
 APP_TIMER_DEF(m_btn_long_push_tmr);
 
@@ -30,7 +31,7 @@ static button_event_cfg_t m_btn_event_list[BUTTONS_NUMBER] =
 {
     // button 1
     {
-        BUTTON_EVENT_NOTHING,
+        BUTTON_EVENT_CHANGE_OLE_LUMINANCE,
         BUTTON_EVENT_NOTHING,
         BUTTON_EVENT_FOO      
     },
@@ -81,6 +82,9 @@ static void button_command_process(button_event_t btn_evt)
 {
     switch(btn_evt)
     {
+        case BUTTON_EVENT_CHANGE_OLE_LUMINANCE:
+            ecx335sn_change_luminance();
+            break;
         default:
             break;
     }

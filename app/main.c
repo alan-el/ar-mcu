@@ -428,24 +428,25 @@ int main(void)
     gatt_init();
 //    
     sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
+    //nrf_delay_ms(2000);
     
-    i2c_comm_slave_init();
-    /*lt8619c_init();
-    nrf_delay_ms(2000);*/
+    //i2c_comm_slave_init();
     ecx335sn_init();
-    
+/*
+    lt8619c_init();
+    nrf_delay_ms(2000);*/
+
     // Start execution.
     NRF_LOG_INFO("AR application started.");
     //scan_start();
-
+    
     /*
     for(;;)
     {
         lt8619c_main_loop();
         nrf_delay_ms(1000);
         NRF_LOG_FLUSH();
-    }
-    */
+    }*/
 
     // Enter main loop.
     for (;;)
